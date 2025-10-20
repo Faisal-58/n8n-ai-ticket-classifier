@@ -1,0 +1,210 @@
+{
+  "name": "Automated_ticket_classifier",
+  "nodes": [
+    {
+      "parameters": {
+        "postProcessAction": "nothing",
+        "options": {
+          "trackLastMessageId": true
+        }
+      },
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "b8d5e077-6d61-4cb2-907f-9f510c3659b9",
+      "name": "📬 Email Inbox Watcher"
+      
+    },
+    {
+      "parameters": {
+        "jsCode": "// The Code Node automatically iterates over input items, but for a \n// multi-item batch, we must define the loop to process all items.\nconst allInputItems = $input.all();\nconst processedItems = [];\n\n// Loop through ALL items passed to the Code Node\nfor (const item of allInputItems) {\n    // Access the actual JSON data for the current item\n    const emailData = item.json;\n\n    // Extract the clean email body.\n    const promptText = emailData.textPlain || \"Error: Email body text is missing.\";\n\n    // Define the list of agents for the API call\n    const agentsToRun = [\n        \"email_agent\", \n        \"ticket_agent\", \n        \"sentiment_agent\", \n        \"suggestion_agent\"\n    ];\n\n    // Create the new payload item structure expected by the next node\n    processedItems.push({\n        json: {\n            \"prompt\": promptText,\n            \"agents\": agentsToRun\n        }\n    });\n}\n\n// Return the array of ALL processed items. This ensures the output is 6 items.\nreturn processedItems;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "730b6b21-b6fb-4034-acec-2f04892cd2dc",
+      "name": "🧩 Email Parser & Payload Builder"
+    },
+    {
+      "parameters": {
+        "content": "Triggers whenever a new customer support email is received.",
+        "height": 96,
+        "width": 150,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -32,
+        -128
+      ],
+      "typeVersion": 1,
+      "id": "abe83b04-7cd3-44a7-8284-e7d66dd4553d",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "Cleans email body and prepares structured prompt for AI backend. Acts as parser.",
+        "height": 112,
+        "width": 150
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        176,
+        -144
+      ],
+      "typeVersion": 1,
+      "id": "13cc3535-11a5-4072-8b3d-bee4433fb808",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "Sends cleaned email data to FastAPI backend for classification, summarization, and sentiment analysis.",
+        "height": 144,
+        "width": 150,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        368,
+        -160
+      ],
+      "typeVersion": 1,
+      "id": "820cf9b7-146e-42b4-bbc1-84f5130d4bcb",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "Creates a Trello card with AI-generated summary, category, and urgency details.",
+        "height": 96,
+        "width": 166,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        560,
+        -128
+      ],
+      "typeVersion": 1,
+      "id": "ab198036-6ed0-416a-8f7e-64c183b30b34",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.trello.com/1/cards",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "{{ $env['TRELLO_KEY'] }}"
+            },
+            {
+              "name": "token",
+              "value": "{{ $env['TRELLO_TOKEN'] }}"
+            },
+            {
+              "name": "idList",
+              "value": "{{ $env['TRELLO_LIST_ID'] }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "name",
+              "value": "={{ $json.results.ticket_agent.split('Action: ')[1] }}"
+            },
+            {
+              "name": "desc",
+              "value": "=**Category & Priority:** {{ $json.results.ticket_agent }} **AI Summary:** {{ $json.results.email_agent }} **Suggested Action:** {{ $json.results.suggestion_agent }}  ---  **Original Email:** {{ $json.prompt }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        592,
+        0
+      ],
+      "id": "4a331e8b-7151-442e-a2cb-da34c44829cd",
+      "name": "📋 Post to Trello Board"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/agent",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        384,
+        0
+      ],
+      "id": "e57174a2-df4c-4dc2-831e-fe1f00d10f18",
+      "name": "🤖 Call AI Agents"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "📬 Email Inbox Watcher": {
+      "main": [
+        [
+          {
+            "node": "🧩 Email Parser & Payload Builder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧩 Email Parser & Payload Builder": {
+      "main": [
+        [
+          {
+            "node": "🤖 Call AI Agents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🤖 Call AI Agents": {
+      "main": [
+        [
+          {
+            "node": "📋 Post to Trello Board",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "357069d5-d4d8-42f9-9a4e-b3f7bdb5e782",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ae65443fa0e8a0452e83437a3d6631c97e7d6a3126340ac6604588625cdb997d"
+  },
+  "id": "cbbdrE5v6JQKfPQR",
+  "tags": []
+}

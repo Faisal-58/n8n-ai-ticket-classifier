@@ -1,0 +1,125 @@
+{
+  "name": "AI Ticket Classifier",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ticket",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -48,
+        0
+      ],
+      "id": "30c0bbce-c87f-4c1e-82d7-407716077847",
+      "name": "Webhook",
+      "webhookId": "ba1925cf-c417-4455-b405-ba4070982ad3"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/agent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ \"prompt\": $json.prompt, \"agents\": $json.agents }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        432,
+        0
+      ],
+      "id": "ed36fcdb-fed0-4f15-8128-fd1bb42d5374",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Function Node: Prepare payload dynamically\nconst defaultAgents = [\"email_agent\", \"ticket_agent\", \"sentiment_agent\", \"suggestion_agent\"];\n\nreturn [{\n    json: {\n        // Correctly access prompt from the webhook body\n        prompt: $json.body.prompt || \"No prompt received\", \n        \n        // Use the webhook body agents OR the default array\n        agents: $json.body.agents || defaultAgents \n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        0
+      ],
+      "id": "fe514d81-69f7-4a9a-aff5-d63a1d936442",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        640,
+        0
+      ],
+      "id": "bc1f654b-7077-42c2-aa3d-4dbafec60b76",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "3e2cc548-39a0-47fd-ba20-ff12e6e365a0",
+  "meta": {
+    "instanceId": "ae65443fa0e8a0452e83437a3d6631c97e7d6a3126340ac6604588625cdb997d"
+  },
+  "id": "3fnf7J2goybQjijy",
+  "tags": []
+}
